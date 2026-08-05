@@ -1,0 +1,51 @@
+Metadata-Version: 2.4
+Name: grathon
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pyright>=1.1.408
+Requires-Dist: tdjson>=1.8.60
+Provides-Extra: test
+Requires-Dist: pytest>=8.0; extra == "test"
+Requires-Dist: pytest-asyncio>=0.23; extra == "test"
+
+# Grathon 🚀
+An AI-friendly, high-performance TDLib wrapper for Python.
+
+## Features
+- **Fully Typed**: Every TDLib object is a Python dataclass.
+- **Auto-generated**: Always up-to-date with the latest Telegram schema.
+- **Fast Routing**: Decorator-based event handling with custom filters.
+- **Multi-client**: Manage multiple Telegram accounts in a single process efficiently.
+
+## Quick Start
+```python
+import asyncio
+from src.tdclient import TdClient
+from src.clientmanager import ClientManager
+from src.TLSchema_Manager.tltypes import updateNewMessage
+
+async def main():
+    manager = ClientManager()
+    client = TdClient(manager)
+
+    @client.router.on(updateNewMessage)
+    async def handle_message(ctx):
+        print(f"New message: {ctx.update.message.content}")
+
+    await client.run_forever()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Internal Tools
+To re-generate the TL Schema (if `td_api.tl.txt` is updated):
+```bash
+python src/TLSchema_Manager/app.py
+```
+
+## Documentation
+- See [ARCHITECTURE.md](./ARCHITECTURE.md) for technical details.
+- See [GEMINI.md](./GEMINI.md) for AI interaction guidelines.
