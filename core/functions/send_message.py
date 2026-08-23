@@ -13,6 +13,7 @@ from grathon.core.TLSchema_Manager.tltypes import (InputMessageContent, InputMes
                                           messageSendingStateFailed)
 from grathon.core.contexts.context import Context, TUpdate
 from grathon.core.errors.SendMessageException import SendMessageException
+from grathon.core.errors.FloodWaitException import FloodWaitException
 
 if TYPE_CHECKING:
     pass
@@ -58,11 +59,19 @@ async def send_message_base(
         if hasattr(response, '__td_type__') and response.__td_type__ == 'error':
             error_code = getattr(response, 'code', 0)
             error_msg = getattr(response, 'message', 'Unknown error')
+            # Raise FloodWaitException for flood wait errors so callers can retry
+            flood_exc = FloodWaitException.from_error(error_msg)
+            if flood_exc:
+                raise flood_exc
             raise SendMessageException(exception=RuntimeError(f"TDLib error {error_code}: {error_msg}"))
 
         if isinstance(response, message) and response.sending_state is not None:
             if isinstance(response.sending_state, messageSendingStateFailed):
                 error_msg = getattr(getattr(response.sending_state, 'error', None), 'message', 'Unknown error')
+                # Raise FloodWaitException for flood wait errors so callers can retry
+                flood_exc = FloodWaitException.from_error(error_msg)
+                if flood_exc:
+                    raise flood_exc
                 raise SendMessageException(exception=RuntimeError(f"Message send failed: {error_msg}"))
 
         if wait_for_confirmation and isinstance(response, message):

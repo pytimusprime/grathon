@@ -9,6 +9,7 @@ from grathon.core.TLSchema_Manager.tltypes import (
     inlineKeyboardButtonTypeCallback,
     inlineKeyboardButtonTypeUrl,
     inlineKeyboardButtonTypeSwitchInline,
+    inlineKeyboardButtonTypeCopyText,
     targetChatChosen,
     targetChatTypes,
     replyMarkupInlineKeyboard,
@@ -161,6 +162,52 @@ class KeyboardBuilder:
             self (for chaining)
         """
         return self.button(text, callback_data, buttonStyleSuccess())
+
+    def secondary_button(self, text: str, callback_data: str | bytes | dict) -> KeyboardBuilder:
+        """Add secondary (gray) callback button to current row
+
+        Uses the default button style — visually less prominent than primary.
+
+        Args:
+            text: Button label
+            callback_data: Data sent to bot when clicked
+
+        Returns:
+            self (for chaining)
+
+        Example:
+            >>> kb = KeyboardBuilder()
+            >>> kb.primary_button("تأیید", "confirm")
+            ...    .secondary_button("انصراف", "cancel")
+            ...    .build()
+        """
+        return self.button(text, callback_data, buttonStyleDefault())
+
+    def copy_button(self, text: str, copy_text: str) -> KeyboardBuilder:
+        """Add copy-to-clipboard button to current row
+
+        When clicked, copies the specified text to user's clipboard
+        (Telegram native feature, no bot callback needed).
+
+        Args:
+            text: Button label
+            copy_text: Text to copy to clipboard when clicked
+
+        Returns:
+            self (for chaining)
+
+        Example:
+            >>> kb = KeyboardBuilder()
+            >>> kb.copy_button("کپی لینک", "https://t.me/example")
+            ...    .build()
+        """
+        btn = inlineKeyboardButton(
+            text=text,
+            type=inlineKeyboardButtonTypeCopyText(text=copy_text),
+            style=buttonStyleDefault()
+        )
+        self._current_row.append(btn)
+        return self
 
     def close_button(self, text: str = "❌ بستن", closing_message: Optional[str] = None) -> KeyboardBuilder:
         """Add close/cancel button that Grathon auto-handles

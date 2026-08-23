@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import asyncio
-from typing import Dict, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, Optional, Tuple, TYPE_CHECKING, Union
 
 from grathon.core.contexts.NewMessageCtx import NewMessageCtx
 from grathon.core.contexts.CallbackQueryCtx import CallbackQueryCtx
@@ -32,7 +32,10 @@ class ConversationStore:
 
     @classmethod
     def register_message(cls, chat_id: int, user_id: int, future: asyncio.Future) -> None:
-        """Register a Future waiting for the next text message from (chat_id, user_id)"""
+        """Register a Future waiting for the next message from (chat_id, user_id)
+
+        The message can be of any content type (text, photo, document, video, etc.).
+        """
         key = (chat_id, user_id)
         cls._message_futures[key] = future
 
@@ -160,6 +163,35 @@ class Conversation:
                 email = await conv.wait_message()
 
                 await ctx.reply(f"✅ Registered: {name} ({email})")
+
+    wait_message() resolves the next message of ANY content type.
+    By default it returns plain ``str`` (text/caption, ``""`` for media without caption).
+    Pass ``only_text=False`` to get the full :class:`NewMessageCtx` with all attributes:
+
+        @router.on(updateNewMessage, filters=[F.command("store")])
+        async def store(ctx: NewMessageCtx):
+            async with Conversation(ctx, timeout=120) as conv:
+                await conv.ask("Send me the file:")
+                reply = await conv.wait_message(only_text=False)
+                if reply is None:
+                    await ctx.reply("Cancelled.")
+                    return
+                if reply.is_document:
+                    await ctx.reply(f"Got file: {reply.file_id}")
+                else:
+                    await ctx.reply(f"Got text: {reply.text}")
+
+    wait_callback() resolves the next button click. By default it returns the
+    decoded callback data ``str``. Pass ``only_data=False`` to get the full
+    :class:`CallbackQueryCtx` (with ``message_id``, ``chat_instance``, ...):
+
+        @router.on(updateNewCallbackQuery, filters=[F.callback(r"^choose_(.+)$")])
+        async def choose(ctx):
+            async with Conversation(ctx, timeout=60) as conv:
+                await conv.ask_buttons("Choose:", keyboard)
+                data = await conv.wait_callback()        # -> "btn_1"
+                cb = await conv.wait_callback(only_data=False)  # -> CallbackQueryCtx
+                await ctx.edit_message_text(f"Clicked: {data} on msg {cb.message_id}")
     """
 
     def __init__(self, ctx: Context, timeout: float = 300.0):
@@ -175,6 +207,7 @@ class Conversation:
         self._user_id = _get_user_id(ctx)
         self._pending_message_future: Optional[asyncio.Future] = None
         self._pending_callback_future: Optional[asyncio.Future] = None
+        self._prompt_message_id: Optional[int] = None
 
     async def __aenter__(self) -> Conversation:
         """Enter the conversation context"""
@@ -203,7 +236,8 @@ class Conversation:
         )
 
         # Step 2: Send the message with buttons (use reply() with reply_markup parameter)
-        await self._ctx.reply(text, reply_markup=reply_markup, **kwargs)
+        sent = await self._ctx.reply(text, reply_markup=reply_markup, **kwargs)
+        self._prompt_message_id = getattr(sent, "id", None)
 
     async def ask(self, text: str, **kwargs) -> None:
         """Send a question to the user and pre-register the future to receive the answer
@@ -225,16 +259,34 @@ class Conversation:
         )
 
         # Step 2: Now send the question (safe to yield control here)
-        await self._ctx.reply(text, **kwargs)  # pyright: ignore [reportAttributeAccessIssue]
+        sent = await self._ctx.reply(text, **kwargs)  # pyright: ignore [reportAttributeAccessIssue]
+        self._prompt_message_id = getattr(sent, "id", None)
 
-    async def wait_message(self) -> str:
-        """Wait for the user's next text message
+    @property
+    def prompt_message_id(self) -> Optional[int]:
+        """ID of the message sent by the last ask()/ask_buttons() call, if available.
+
+        Useful when you need to reference the bot's prompt message, e.g. for
+        edit_message_text() or delete_message() after the user responds.
+        """
+        return self._prompt_message_id
+
+    async def wait_message(self, only_text: bool = True) -> Union[str, NewMessageCtx, None]:
+        """Wait for the user's next message (any content type: text, photo, file...)
 
         If ask() was called before this, reuses the pre-registered future.
         Otherwise, creates and registers a new future (fallback for direct wait_message calls).
 
+        Args:
+            only_text: If True (default), return plain ``str`` (text or caption, ``""`` for
+                media without caption) for backward compatibility.
+                If False, return the full :class:`NewMessageCtx` object giving access
+                to all message attributes (``text``, ``file_id``, ``is_document``,
+                ``content``, ``remote_file_id``, etc.).
+
         Returns:
-            The message text sent by the user
+            If ``only_text=True``: ``str`` (or ``None`` on cancel).
+            If ``only_text=False``: :class:`NewMessageCtx` (or ``None`` on cancel).
 
         Raises:
             ConversationTimeout: if user doesn't respond within the timeout period
@@ -255,22 +307,40 @@ class Conversation:
 
         try:
             msg_ctx = await asyncio.wait_for(future, timeout=self._timeout)
-            print(f"✅ DEBUG: Message received: {msg_ctx.text}", flush=True)
-            return msg_ctx.text or ""
+            if msg_ctx is _CANCELLED:
+                print(f"⏹️ DEBUG: Conversation cancelled for chat={self._chat_id}, user={self._user_id}", flush=True)
+                return None
+            content_name = (
+                type(msg_ctx.content).__name__ if getattr(msg_ctx, "content", None) else "text"
+            )
+            text_repr = getattr(msg_ctx, "text", None)
+            print(f"✅ DEBUG: Message received: {text_repr!r} (content={content_name})", flush=True)
+            if only_text:
+                return msg_ctx.text or ""
+            return msg_ctx  # pyright: ignore [reportReturnType]
         except asyncio.TimeoutError:
             print(f"⏱️ DEBUG: Timeout after {self._timeout}s", flush=True)
             raise ConversationTimeout(
                 f"No response from user {self._user_id} within {self._timeout}s"
             )
 
-    async def wait_callback(self) -> str:
+    async def wait_callback(self, only_data: bool = True) -> Union[str, CallbackQueryCtx, None]:
         """Wait for the user's next button click
 
         If ask_buttons() was called before this, reuses the pre-registered future.
         Otherwise, creates and registers a new future (fallback for direct wait_callback calls).
 
+        Args:
+            only_data: If True (default), return the decoded callback data ``str``
+                (e.g. ``"btn_1"``) for backward compatibility.
+                If False, return the full :class:`CallbackQueryCtx` object giving access
+                to all callback attributes (``data_str``, ``message_id``, ``chat_instance``,
+                ``sender_user_id``, etc.).
+
         Returns:
-            The decoded callback data string from the button
+            The callback data (``str`` when ``only_data=True``) or the full
+            :class:`CallbackQueryCtx` (when ``only_data=False``), or ``None`` if the
+            conversation was cancelled.
 
         Raises:
             ConversationTimeout: if user doesn't click within the timeout period
@@ -289,7 +359,12 @@ class Conversation:
 
         try:
             cb_ctx = await asyncio.wait_for(future, timeout=self._timeout)
-            return cb_ctx.data_str or ""
+            if cb_ctx is _CANCELLED:
+                print(f"⏹️ DEBUG: Callback conversation cancelled for chat={self._chat_id}, user={self._user_id}", flush=True)
+                return None
+            if only_data:
+                return cb_ctx.data_str or ""
+            return cb_ctx  # pyright: ignore [returnType]
         except asyncio.TimeoutError:
             raise ConversationTimeout(
                 f"No button click from user {self._user_id} within {self._timeout}s"

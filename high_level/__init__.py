@@ -11,6 +11,7 @@ from grathon.high_level.session import SessionStore
 from grathon.high_level.close_button_handler import auto_handle_close_button
 from grathon.high_level.helpers.files import FileHelper
 from grathon.high_level.middlewares.retry import retry_middleware, auto_retry, FloodWaitError
+from grathon.core.errors.FloodWaitException import FloodWaitException
 from grathon.high_level.helpers.rate_limit_manager import RateLimitManager, RateLimitEvent, install_rate_limit_manager
 
 __all__ = [
@@ -40,6 +41,7 @@ __all__ = [
     "retry_middleware",
     "auto_retry",
     "FloodWaitError",
+    "FloodWaitException",
     "RateLimitManager",
     "RateLimitEvent",
     "install_rate_limit_manager",
