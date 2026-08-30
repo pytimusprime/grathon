@@ -12,7 +12,7 @@ import time
 from typing import Any, Optional, Pattern, TYPE_CHECKING
 
 from grathon.core.contexts.CallbackQueryCtx import CallbackQueryCtx
-from grathon.high_level.callback_store import CallbackStore
+from grathon.high_level.callback_db import resolve_callback
 from grathon.high_level.helpers.validation import InputValidator
 
 if TYPE_CHECKING:
@@ -190,7 +190,8 @@ class CallbackDataFilter(Filter):
             return False
 
         # Resolve callback alias if present
-        resolved = CallbackStore.resolve(data_str)
+        from grathon.high_level.callback_db import resolve_callback
+        resolved = resolve_callback(data_str)
         if resolved is not None:
             data_str = resolved
 

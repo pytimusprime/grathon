@@ -49,8 +49,8 @@ class CallbackQueryRouter(Router[updateNewCallbackQuery]):
                 return False
 
             # Try to decompress if needed
-            from grathon.high_level.callback_store import CallbackStore
-            resolved = CallbackStore.resolve(data_str)
+            from grathon.high_level.callback_db import resolve_callback
+            resolved = resolve_callback(data_str)
             if resolved:
                 data_str = resolved
 

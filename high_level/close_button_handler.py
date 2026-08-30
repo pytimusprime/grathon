@@ -39,11 +39,11 @@ async def auto_handle_close_button(ctx: Union[CallbackQueryCtx, "Context[updateN
             return False
 
         # Try to decompress if needed
-        from grathon.high_level.callback_store import CallbackStore
+        from grathon.high_level.callback_db import resolve_callback
         data_str = ctx.data_str  # type: ignore
         print(f"[DEBUG] Close button check - data_str: {data_str[:100]}")  # DEBUG
 
-        resolved = CallbackStore.resolve(data_str)
+        resolved = resolve_callback(data_str)
         if resolved:
             print(f"[DEBUG] Resolved compressed data: {resolved[:100]}")  # DEBUG
             data_str = resolved

@@ -19,7 +19,7 @@ from grathon.core.TLSchema_Manager.tltypes import (
     buttonStyleDanger,
     buttonStyleSuccess,
 )
-from grathon.high_level.callback_store import CallbackStore
+from grathon.high_level.callback_db import register_callback
 
 # Telegram's actual limit for callback_data
 MAX_CALLBACK_BYTES = 64
@@ -61,10 +61,14 @@ class KeyboardBuilder:
         """
         data_bytes = _encode(callback_data)
 
-        # Auto-compress if too long
+        # Telegram caps callback_data at 64 bytes. Compression (zlib+base64)
+        # could never guarantee the bound for payloads in the ~33-200 byte
+        # range (they always *grow*). Instead we use DB-backed indirection: a
+        # short key (cb_<12hex> = 15 bytes) is stored alongside the payload.
+        # The key is always well under the limit, for any payload size.
         if len(data_bytes) > MAX_CALLBACK_BYTES:
-            compressed = CallbackStore.register(_encode_to_str(callback_data))
-            data_bytes = compressed.encode('ascii')
+            short_key = register_callback(_encode_to_str(callback_data))
+            data_bytes = short_key.encode('ascii')
 
         btn = inlineKeyboardButton(
             text=text,

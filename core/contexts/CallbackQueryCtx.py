@@ -81,7 +81,7 @@ class CallbackQueryCtx(Context[updateNewCallbackQuery]):
 
     @property
     def data_str(self) -> Optional[str]:
-        """Decoded callback data (UTF-8) — auto-resolves aliases via CallbackStore"""
+        """Decoded callback data (UTF-8) — auto-resolves aliases via callback_db"""
         raw = self.callback_data
         if isinstance(raw, bytes):
             decoded = raw.decode('utf-8', errors='replace') if raw else None
@@ -94,8 +94,8 @@ class CallbackQueryCtx(Context[updateNewCallbackQuery]):
             return None
 
         # Resolve callback alias if present (lazy import to avoid circular dependency)
-        from grathon.high_level.callback_store import CallbackStore
-        resolved = CallbackStore.resolve(decoded)
+        from grathon.high_level.callback_db import resolve_callback
+        resolved = resolve_callback(decoded)
         if resolved is not None:
             return resolved
         return decoded

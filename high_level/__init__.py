@@ -2,7 +2,7 @@
 
 from grathon.high_level.keyboards import KeyboardBuilder
 from grathon.high_level.inline_query_builder import InlineQueryResultBuilder
-from grathon.high_level.callback_store import CallbackStore
+from grathon.high_level.callback_db import register_callback, resolve_callback
 from grathon.high_level.filters import F, Filter, TextFilter, CommandFilter, FromUserFilter, CallbackDataFilter, QueryFilter
 from grathon.high_level.filters import AndFilter, OrFilter, NotFilter
 from grathon.high_level.conversations import Conversation, ConversationTimeout, conversation_middleware
@@ -17,7 +17,8 @@ from grathon.high_level.helpers.rate_limit_manager import RateLimitManager, Rate
 __all__ = [
     "KeyboardBuilder",
     "InlineQueryResultBuilder",
-    "CallbackStore",
+    "register_callback",
+    "resolve_callback",
     "F",
     "Filter",
     "TextFilter",

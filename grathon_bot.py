@@ -269,6 +269,12 @@ class GrathonBot:
 
     async def start(self) -> None:
         """Start the bot (blocks forever until interrupted)"""
+        # Initialize the DB-backed callback store (replaces old compression).
+        from grathon.high_level.callback_db import init_callback_db
+        try:
+            await init_callback_db()
+        except Exception as e:
+            print(f"[WARN] CallbackDB init failed (callbacks may not resolve): {e}")
         await self._client.run_forever()
 
     async def stop(self) -> None:
