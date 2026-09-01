@@ -10,6 +10,8 @@ It wraps the raw TDLib C++ library with a clean, async Python API and a plugin-b
 - **Plugin system** — Load, unload, reload plugins at runtime without restarting the bot.
 - **Filter DSL** — Declarative, composable filters (`&`, `|`, `~`) for event matching.
 - **Type-safe** — Uses generated TDLib type stubs (`tltypes`, `tlmethods`).
+- **Send confirmation** — Automatic tracking of pending → final message IDs via `MessageTracker`.
+- **FloodWait handling** — Built-in `FloodWaitException` for retry logic.
 
 ## Quick Start
 
@@ -42,7 +44,28 @@ pip install grathon @ git+https://github.com/pytimusprime/grathon.git
 
 ## Documentation
 
-See the `.ai-context/` directory for comprehensive project documentation.
+The `.ai-context/` directory contains the **authoritative, up-to-date documentation** for the Grathon framework. It is maintained alongside the source code and reflects the current state of the project.
+
+### Reading Order
+
+1. [`.ai-context/README.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/README.md) — Project overview, structure, and key concepts
+2. [`.ai-context/API.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/API.md) — Full API reference for all classes and methods
+3. [`.ai-context/ARCHITECTURE.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/ARCHITECTURE.md) — Architecture layers and data flow
+4. [`.ai-context/RULES.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/RULES.md) — Coding rules and conventions (must follow)
+5. [`.ai-context/FAQ.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/FAQ.md) — Common questions and troubleshooting
+6. [`.ai-context/EXAMPLES.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/EXAMPLES.md) — Usage examples
+
+### Why `.ai-context/`?
+
+This directory contains the **authoritative, up-to-date documentation** for the Grathon framework. It is maintained alongside the source code and reflects the current state of the project. Do not rely on scattered README files or inline comments alone.
+
+## Running the Bot
+
+See the "Running the Bot" section in `.ai-context/README.md` for the full `main.py` pattern including middleware installation, plugin manager setup, scheduler, and graceful shutdown.
+
+## Database
+
+Grathon works with **PicoDB** (available separately at [github.com/pytimusprime/picodb](https://github.com/pytimusprime/picodb)) which supports both SQLite and PostgreSQL.
 
 ## License
 
