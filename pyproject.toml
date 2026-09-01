@@ -27,6 +27,7 @@ classifiers = [
 ]
 dependencies = [
     "tdjson>=1.8.66",
+    "picodb @ git+https://github.com/pytimusprime/picodb.git",
 ]
 
 [project.urls]
@@ -36,7 +37,7 @@ Issues = "https://github.com/pytimusprime/grathon/issues"
 
 [tool.setuptools.packages.find]
 include = ["grathon*", "core*", "high_level*"]
-exclude = ["tests*", "picodb*", "example*"]
+exclude = ["tests*", "example*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.py", "*.txt", "*.md"]
