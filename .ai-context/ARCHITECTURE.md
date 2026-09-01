@@ -123,15 +123,36 @@ The transport layer is pluggable — you can swap `TdjsonTransport` for a mock i
 
 Each context provides methods for the most common actions:
 
-- **`reply()`** — Send a reply message (text or file)
+- **`reply()`** — Send a reply message (text or file) with `wait_for_confirmation` support
 - **`edit_message()`** — Edit the current message
 - **`edit_message_caption()`** — Edit media caption
 - **`edit_message_media()`** — Replace media content
 - **`delete_message()`** — Delete a message
-- **`send_message()`** — Send a new message to the same chat
+- **`send_message()`** — Send a new message to the same chat (with `wait_for_confirmation` on `CallbackQueryCtx`)
 - **`send_file()`** — Send a file
 - **`answer()`** — Answer a callback query (CallbackQueryCtx only)
 - **`get_replied_message()`** — Get the replied message (NewMessageCtx only)
+- **`forward()`** — Forward messages (with `wait_for_confirmation` support)
+
+### Send Confirmation Flow
+
+When sending messages, TDLib returns a temporary (pending) ID immediately and finalizes it later via `updateMessageSendSucceeded`. The framework handles this through:
+
+1. **`send_message_base`** (`core/functions/send_message.py`) — sends the message and optionally waits for confirmation
+2. **`MessageTracker`** (`high_level/helpers/message_tracker.py`) — tracks pending messages and correlates with final IDs
+3. **`message_send_middleware`** (`high_level/helpers/message_send_middleware.py`) — listens for `updateMessageSendSucceeded` and resolves the tracker
+
+```
+send_message_base() → pending message (temp ID)
+    ↓
+MessageTracker.track_pending() → asyncio.Future
+    ↓
+TDLib sends updateMessageSendSucceeded (old_id → new_id)
+    ↓
+message_send_middleware → tracker.confirm_message()
+    ↓
+Future resolves with final ID
+```
 
 ## Layer 4: Filter DSL (`F`)
 
@@ -140,7 +161,7 @@ Each context provides methods for the most common actions:
 ### Design
 
 - `Filter` base class with `__call__(ctx) -> bool`
-- Composition operators: `&` → `AndFilter`, `\|` → `OrFilter`, `~` → `NotFilter`
+- Composition operators: `&` → `AndFilter`, `|` → `OrFilter`, `~` → `NotFilter`
 - Each filter type checks a specific aspect of the context
 - `F.callback(pattern)` stores the regex match on `ctx._callback_match`
 
@@ -198,7 +219,7 @@ PluginManager.reload(name)
 
 ### `KeyboardBuilder`
 
-Fluent API for building inline keyboards. Handles callback data encoding (including compression for >64 bytes via `CallbackStore`).
+Fluent API for building inline keyboards. Handles callback data encoding (including compression for >64 bytes via `CallbackStore` or `CallbackDB`).
 
 ### `FileHelper`
 
@@ -212,13 +233,21 @@ Converts Markdown/HTML strings to TDLib `formattedText` objects.
 
 Manages multi-step conversations using `asyncio.Future`. A handler registers a future, and the next matching message resolves it.
 
+### `CallbackDB`
+
+SQLite-backed short key storage for large callback data (>64 bytes). Replaces the legacy `CallbackStore`.
+
 ### `CallbackStore`
 
-Stores large callback data (>64 bytes) with a short alias, resolving it transparently when callback data is received.
+Legacy zlib+base64 compression for large callback data. Still available but `CallbackDB` is recommended.
 
 ### `SessionStore`
 
 Per-chat key-value storage for tracking user state across messages.
+
+### `MessageTracker`
+
+Tracks pending messages and correlates with final IDs. Used by `send_message_base` and `forward_messages` when `wait_for_confirmation=True`.
 
 ### `BotScheduler`
 
@@ -232,9 +261,13 @@ Centralized error handling. Handlers register via `bot.error_handler()` decorato
 
 Per-user rate limiting. Tracks message frequency per user and can block messages that exceed a configured limit within a time window. Installed via `install_rate_limit_manager(bot._client)`.
 
-### `MessageTracker`
+### `FloodWaitException`
 
-Tracks sent messages by chat and message ID, enabling later edits or deletions of messages sent by the bot.
+Raised by `send_message_base` when a send fails due to flood wait. Includes `retry_after` attribute with the number of seconds to wait before retrying.
+
+### `MessageSendMiddleware`
+
+Listens for `updateMessageSendSucceeded` and `updateMessageSendFailed` updates and routes them to the `MessageTracker`. Must be installed via `install_message_send_middleware(bot._client)`.
 
 ### `ConnectionMonitor`
 
@@ -292,13 +325,10 @@ ClientManager._poll_loop()
 ## Key Design Decisions
 
 1. **TDLib over Bot API** — Full access to all Telegram features including forwarding, file management, and media editing.
-
 2. **Asyncio-first** — All I/O is async. The update queue loop never blocks, ensuring all updates are processed promptly.
-
 3. **Onion middleware pattern** — Middlewares wrap each other, allowing pre- and post-processing of every event.
-
 4. **Plugin isolation** — Each plugin gets its own `Router` instance, so handlers can be loaded/unloaded/reloaded independently.
-
-5. **Callback data compression** — `CallbackStore` transparently handles the 64-byte Telegram callback limit by compressing large data with zlib+base64.
-
+5. **Callback data compression** — `CallbackStore` and `CallbackDB` transparently handle the 64-byte Telegram callback limit.
 6. **Live filters** — `F.from_user(user_ids_fn=config.ADMINS)` reads admin lists dynamically on every update, so runtime changes (like `/add_admin`) are immediately effective.
+7. **Send confirmation** — `MessageTracker` + `message_send_middleware` automatically correlate pending message IDs with final IDs.
+8. **FloodWait handling** — `FloodWaitException` provides structured retry logic for flood wait errors.

@@ -380,7 +380,64 @@ except asyncio.CancelledError:
 
 ---
 
-## 12. Testing Rules
+## 12. Send Confirmation Rules
+
+### ALWAYS use `wait_for_confirmation` when sending messages
+
+When sending messages through `ctx.reply()`, `ctx.forward()`, or `ctx.send_message()`, TDLib returns a temporary (pending) ID immediately and finalizes it later via `updateMessageSendSucceeded`. The framework has a `MessageTracker` + `message_send_middleware` to handle this:
+
+- `wait_for_confirmation=True` (default) → waits for final ID
+- `wait_for_confirmation=False` → returns immediately with temp ID
+
+```python
+# ✅ CORRECT — wait for final ID (default behavior)
+await ctx.reply("Hello!")  # message.id is FINAL
+
+# ✅ CORRECT — explicitly wait
+msg = await ctx.reply("Hello!", wait_for_confirmation=True)
+# msg.id is FINAL
+
+# ⚠️ Use with caution — temp ID may change
+msg = await ctx.reply("Hello!", wait_for_confirmation=False)
+# msg.id is TEMPORARY — may not match final Telegram ID
+```
+
+### ALWAYS use `wait_for_confirmation` on `CallbackQueryCtx.send_message`
+
+`CallbackQueryCtx.send_message` also supports `wait_for_confirmation` and `confirmation_timeout`:
+
+```python
+# ✅ CORRECT
+await ctx.send_message("Hello!", wait_for_confirmation=True)
+await ctx.send_message("Hello!", confirmation_timeout=10.0)
+```
+
+### Install `message_send_middleware` for tracking to work
+
+The `MessageTracker` requires the middleware to be installed:
+
+```python
+from grathon.high_level.helpers.message_send_middleware import install_message_send_middleware
+install_message_send_middleware(bot._client)
+```
+
+### ALWAYS handle `FloodWaitException` for retry logic
+
+When sending fails with a flood wait, `send_message_base` raises `FloodWaitException`:
+
+```python
+from grathon.core.errors.FloodWaitException import FloodWaitException
+
+try:
+    await ctx.reply("Hello!")
+except FloodWaitException as e:
+    await asyncio.sleep(e.retry_after)
+    await ctx.reply("Hello!")  # retry
+```
+
+---
+
+## 13. Testing Rules
 
 ### ALWAYS test with real TDLib before deploying
 

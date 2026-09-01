@@ -17,10 +17,17 @@ TDLib gives access to the full Telegram client API, including:
 The Bot API is limited to what a bot can do via the Bot Token. TDLib gives you full client-level access.
 
 ### What Python versions are supported?
-Python >= 3.13 is required.
+Python >= 3.10 is supported.
 
 ### How do I install Grathon?
-Grathon is designed to be used as a local library within your project (in `libs/grathon/`). Add `libs/` to your `sys.path` or install it as a package.
+Grathon is available as a package on GitHub:
+
+```bash
+pip install tdjson>=1.8.66
+pip install grathon @ git+https://github.com/pytimusprime/grathon.git
+```
+
+Or as a local library within your project (in `libs/grathon/`). Add `libs/` to your `sys.path`:
 
 ```python
 import sys
@@ -72,10 +79,12 @@ Middleware wraps the entire dispatch pipeline using the **onion pattern**. Each 
 Callback queries (`updateNewCallbackQuery`) are handled by `CallbackQueryRouter`, which is a separate router from the message router. Use `@bot.on_callback(pattern)` to register handlers.
 
 ### What is `CallbackStore`?
-Telegram limits inline button callback data to 64 bytes. `CallbackStore` transparently handles larger data by:
-1. Compressing data with zlib + base64 when registering
-2. Storing the compressed alias
-3. Resolving aliases back to original data when a callback is received
+Telegram limits inline button callback data to 64 bytes. Grathon provides two mechanisms:
+
+1. **`callback_db`** (current, recommended) — SQLite-backed short key storage
+2. **`callback_store`** (legacy) — zlib + base64 compression
+
+Both work transparently via `KeyboardBuilder.button()`.
 
 ### How does `F.callback(pattern)` work?
 `F.callback(pattern)` creates a `CallbackDataFilter` that:
@@ -175,6 +184,48 @@ ctx.session["step"] = 1
 step = ctx.session.get("step", 0)
 ```
 
+## Send Confirmation
+
+### What is `wait_for_confirmation`?
+When sending messages, TDLib returns a temporary (pending) ID immediately and finalizes it later via `updateMessageSendSucceeded`. The framework has a `MessageTracker` + `message_send_middleware` to handle this:
+
+- `wait_for_confirmation=True` (default) → waits for final ID
+- `wait_for_confirmation=False` → returns immediately with temp ID
+
+```python
+# ✅ CORRECT — wait for final ID (default behavior)
+await ctx.reply("Hello!")  # message.id is FINAL
+
+# ✅ CORRECT — explicitly wait
+msg = await ctx.reply("Hello!", wait_for_confirmation=True)
+# msg.id is FINAL
+
+# ⚠️ Use with caution — temp ID may change
+msg = await ctx.reply("Hello!", wait_for_confirmation=False)
+# msg.id is TEMPORARY — may not match final Telegram ID
+```
+
+### How do I install `message_send_middleware`?
+The `MessageTracker` requires the middleware to be installed:
+
+```python
+from grathon.high_level.helpers.message_send_middleware import install_message_send_middleware
+install_message_send_middleware(bot._client)
+```
+
+### What is `FloodWaitException`?
+When sending fails with a flood wait, `send_message_base` raises `FloodWaitException`:
+
+```python
+from grathon.core.errors.FloodWaitException import FloodWaitException
+
+try:
+    await ctx.reply("Hello!")
+except FloodWaitException as e:
+    await asyncio.sleep(e.retry_after)
+    await ctx.reply("Hello!")  # retry
+```
+
 ## File Handling
 
 ### How do I send a file by local path?
@@ -245,7 +296,7 @@ Yes. Use `/reload <plugin_name>` to reload a single plugin, or `/reload_all` to 
 
 ## Database
 
-Grathon itself doesn't include a database layer. It's designed to work with any async database. You can integrate it with PostgreSQL (via asyncpg), SQLite (via aiosqlite), Redis, or any other async database of your choice.
+Grathon works with PicoDB (included in `libs/picodb/`) which supports both SQLite and PostgreSQL. See the [PicoDB repository](https://github.com/pytimusprime/picodb) for details.
 
 ## Performance
 

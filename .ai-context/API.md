@@ -305,7 +305,7 @@ For `updateNewInlineQuery` events. Adds:
 | `edit_message_caption` | `edit_message_caption(text, reply_markup=None, show_caption_above_media=False)` | Edit media caption |
 | `edit_message_reply_markup` | `edit_message_reply_markup(reply_markup=None)` | Edit only the inline keyboard |
 | `delete_message` | `delete_message(revoke=True)` | Delete the message |
-| `send_message` | `send_message(text=None, file=None, file_type="auto", reply_markup=None)` | Send a new message to the same chat |
+| `send_message` | `send_message(text=None, file=None, file_type="auto", reply_markup=None, wait_for_confirmation=True, confirmation_timeout=5.0)` | Send a new message to the same chat |
 | `reply` | `reply(text=None, file=None, file_type="auto", reply_markup=None)` | Reply to the same chat |
 | `send_file` | `send_file(file_path, caption="", file_type="auto")` | Send a file to the same chat |
 

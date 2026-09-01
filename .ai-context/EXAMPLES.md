@@ -192,3 +192,75 @@ await ctx.edit_message_caption(text="New caption")
 # Delete a message
 await ctx.delete_message()
 ```
+
+## 15. Send Confirmation (wait_for_confirmation)
+
+```python
+# Default behavior: wait for final ID
+msg = await ctx.reply("Hello!")
+print(msg.id)  # FINAL message ID
+
+# Explicitly wait with custom timeout
+msg = await ctx.reply("Hello!", wait_for_confirmation=True, confirmation_timeout=10.0)
+
+# Skip waiting (advanced use cases)
+msg = await ctx.reply("Hello!", wait_for_confirmation=False)
+print(msg.id)  # TEMPORARY message ID — may change!
+
+# Forward with confirmation
+msgs = await ctx.forward(to_chat_id=12345, wait_for_confirmation=True)
+```
+
+## 16. FloodWaitException Handling
+
+```python
+from grathon.core.errors.FloodWaitException import FloodWaitException
+
+@bot.on_command("broadcast")
+async def broadcast(ctx):
+    for user_id in user_ids:
+        try:
+            await bot.api.send_message(chat_id=user_id, text="Hello!")
+        except FloodWaitException as e:
+            print(f"Flood wait: sleeping {e.retry_after}s")
+            await asyncio.sleep(e.retry_after)
+            await bot.api.send_message(chat_id=user_id, text="Hello!")  # retry
+```
+
+## 17. Installing Message Send Middleware
+
+```python
+from grathon.high_level.helpers.message_send_middleware import install_message_send_middleware
+
+bot = GrathonBot(...)
+install_message_send_middleware(bot._client)  # Required for wait_for_confirmation!
+```
+
+## 18. CallbackDB (SQLite-backed Callback Storage)
+
+```python
+from grathon.high_level.callback_db import init_callback_db
+
+# Initialize in main.py before bot.start()
+await init_callback_db()
+
+# KeyboardBuilder automatically uses CallbackDB for large callback data
+kb = KeyboardBuilder()
+kb.button("View", {"action": "view", "key": "some_very_long_key_that_exceeds_64_bytes"})
+```
+
+## 19. Conversation (Multi-step Dialog)
+
+```python
+from grathon.high_level.conversations import Conversation
+
+@bot.on_command("register")
+async def register(ctx):
+    async with Conversation(ctx, timeout=60.0) as conv:
+        await ctx.reply("What's your name?")
+        name = await conv.wait_message()
+
+        await ctx.reply(f"Nice to meet you, {name}! Now choose an option:")
+        option = await conv.wait_callback()
+        # option is the callback data string
+```
