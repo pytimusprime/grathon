@@ -15,7 +15,7 @@ from typing import (
 )
 
 import orjson
-from sqlalchemy import JSON, Integer, String, Index, and_, func, select, text, Boolean, Float
+from sqlalchemy import JSON, BigInteger, String, Index, and_, func, select, text, Boolean, Float
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, mapped_column
@@ -65,10 +65,13 @@ class AsyncPicodb(Generic[SchemaT], FtsMixin):
 
 		self.schema_cls = schema_cls
 		self.db_path = path
+		is_postgresql = path.startswith("postgresql") or path.startswith("postgresql+asyncpg")
+		connect_args = {} if is_postgresql else {"check_same_thread": False}
+		self._json_column_type = JSONB if is_postgresql else JSON
 		self.engine = create_async_engine(
 			path,
 			echo=False,
-			connect_args={"check_same_thread": False},
+			connect_args=connect_args,
 			pool_pre_ping=True,
 			execution_options={"isolation_level": "AUTOCOMMIT"},
 		)
@@ -108,11 +111,11 @@ class AsyncPicodb(Generic[SchemaT], FtsMixin):
 			elif base_t is bool:
 				attrs[f.name] = mapped_column(Boolean, nullable=is_optional)
 			elif base_t is int:
-				attrs[f.name] = mapped_column(Integer, nullable=is_optional)
+				attrs[f.name] = mapped_column(BigInteger, nullable=is_optional)
 			elif base_t is float:
 				attrs[f.name] = mapped_column(Float, nullable=is_optional)
 			elif get_origin(base_t) in (list, dict, List, Dict) or base_t in (list, dict) or is_dataclass(base_t):
-				attrs[f.name] = mapped_column(JSONB, nullable=True)
+				attrs[f.name] = mapped_column(self._json_column_type, nullable=True)
 			else:
 				attrs[f.name] = mapped_column(String, nullable=is_optional)
 
@@ -183,7 +186,7 @@ class AsyncPicodb(Generic[SchemaT], FtsMixin):
 			if v is not None:
 				data_dict[k] = data_formatter(v)
 
-		record_id = self._compute_record_id(data_dict)
+		record_id = obj.record_id if getattr(obj, "record_id", None) else self._compute_record_id(data_dict)
 		data_dict["record_id"] = record_id
 
 		async with self._write_lock:
@@ -220,7 +223,7 @@ class AsyncPicodb(Generic[SchemaT], FtsMixin):
 			for k, v in d.items():
 				if v is not None:
 					d[k] = data_formatter(v)
-			rid = self._compute_record_id(d)
+			rid = obj.record_id if getattr(obj, "record_id", None) else self._compute_record_id(d)
 			d["record_id"] = rid
 			dicts.append(d)
 

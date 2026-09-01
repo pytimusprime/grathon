@@ -15,7 +15,7 @@ from typing import (
 )
 
 import orjson
-from sqlalchemy import JSON, Integer, BigInteger, String, Index, and_, func, select, text, Boolean, Float
+from sqlalchemy import JSON, BigInteger, String, Index, and_, func, select, text, Boolean, Float
 from sqlalchemy.dialects.postgresql import TSVECTOR, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, mapped_column
@@ -101,8 +101,7 @@ class AsyncPicodoPG(Generic[SchemaT], FtsMixinPG):
 			elif base_t is bool:
 				attrs[f.name] = mapped_column(Boolean, nullable=is_optional)
 			elif base_t is int:
-				col_type = BigInteger if f.name == "user_id" else Integer
-				attrs[f.name] = mapped_column(col_type, nullable=is_optional)
+				attrs[f.name] = mapped_column(BigInteger, nullable=is_optional)
 			elif base_t is float:
 				attrs[f.name] = mapped_column(Float, nullable=is_optional)
 			elif get_origin(base_t) in (list, dict, List, Dict) or base_t in (list, dict) or is_dataclass(base_t):
@@ -227,7 +226,7 @@ class AsyncPicodoPG(Generic[SchemaT], FtsMixinPG):
 			if v is not None and k not in json_fields:
 				data_dict[k] = data_formatter(v)
 
-		record_id = self._compute_record_id(data_dict)
+		record_id = obj.record_id if getattr(obj, "record_id", None) else self._compute_record_id(data_dict)
 		data_dict["record_id"] = record_id
 
 		async with self._write_lock:
@@ -270,7 +269,7 @@ class AsyncPicodoPG(Generic[SchemaT], FtsMixinPG):
 			for k, v in d.items():
 				if v is not None and k not in json_fields:
 					d[k] = data_formatter(v)
-			rid = self._compute_record_id(d)
+			rid = obj.record_id if getattr(obj, "record_id", None) else self._compute_record_id(d)
 			d["record_id"] = rid
 			dicts.append(d)
 
