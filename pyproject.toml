@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grathon"
+version = "2.1.0"
+description = "Grathon — Python Telegram Bot Framework (TDLib)"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "pytimusprime"},
+]
+keywords = ["telegram", "bot", "tdlib", "tdjson", "async"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Communications :: Chat",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "tdjson>=1.8.66",
+]
+
+[project.urls]
+Homepage = "https://github.com/pytimusprime/grathon"
+Repository = "https://github.com/pytimusprime/grathon.git"
+Issues = "https://github.com/pytimusprime/grathon/issues"
+
+[tool.setuptools.packages.find]
+include = ["grathon*", "core*", "high_level*"]
+exclude = ["tests*", "picodb*", "example*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.py", "*.txt", "*.md"]

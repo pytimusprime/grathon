@@ -330,6 +330,8 @@ class CallbackQueryCtx(Context[updateNewCallbackQuery]):
         file: Optional[str] = None,
         file_type: str = "auto",
         reply_markup: Optional[ReplyMarkup] = None,
+        wait_for_confirmation: bool = True,
+        confirmation_timeout: float = 5.0,
     ) -> Any:
         """Send a new message to the same chat
 
@@ -339,6 +341,8 @@ class CallbackQueryCtx(Context[updateNewCallbackQuery]):
             file: Path to file (photo/video/audio/document)
             file_type: "auto", "photo", "video", "audio", "document", "voice", "animation", "sticker"
             reply_markup: Optional keyboard/inline buttons
+            wait_for_confirmation: Wait for final confirmation (default: True)
+            confirmation_timeout: Timeout for confirmation (seconds)
 
         Returns:
             Response from API
@@ -415,7 +419,9 @@ class CallbackQueryCtx(Context[updateNewCallbackQuery]):
             reply_to=None,
             options=send_options,
             reply_markup=reply_markup,
-            input_message_content=input_content
+            input_message_content=input_content,
+            wait_for_confirmation=wait_for_confirmation,
+            confirmation_timeout=confirmation_timeout,
         )
 
     async def send_message_markdown(

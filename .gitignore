@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TDLib
+bot_db/
+bot_db_expiry/
+
+# Project-specific
+MEMORY.md
+IDEAS.md
+MISSING_FEATURES.md
+ANALYSIS_FILEHOLDER.md

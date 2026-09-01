@@ -94,10 +94,26 @@ async def message_send_middleware(ctx: Context, next_fn) -> None:
 
             # Track failed temp ID for archive queue retry
             try:
-                from utils.files import _failed_temp_ids
-                _failed_temp_ids.add(old_message_id)
+                from utils.files import _failed_temp_ids, mark_failed_temp
+                # Parse Telegram "retry after N" from the error so archive
+                # retry sleeps the exact FloodWait instead of re-hitting it.
+                retry_after = 0.0
+                err_text = error_msg or ""
+                try:
+                    import re as _re
+                    _m = _re.search(r"retry after (\d+)", err_text, _re.IGNORECASE)
+                    if _m:
+                        retry_after = float(int(_m.group(1)))
+                except Exception:
+                    pass
+                mark_failed_temp(old_message_id, retry_after)
             except Exception:
-                pass
+                # Fallback to the previous bare-set behaviour
+                try:
+                    from utils.files import _failed_temp_ids
+                    _failed_temp_ids.add(old_message_id)
+                except Exception:
+                    pass
 
             logger.warning(
                 f"❌ پیام ارسال ناموفق: chat={chat_id}, id={old_message_id}, "
