@@ -9,6 +9,7 @@ from grathon.high_level.conversations import Conversation, ConversationTimeout, 
 from grathon.high_level.plugin_manager import PluginManager, PluginManagerTexts, PluginState, PluginRecord
 from grathon.high_level.session import SessionStore
 from grathon.high_level.close_button_handler import auto_handle_close_button
+from grathon.high_level.smart_menu import SmartMenu
 from grathon.high_level.helpers.files import FileHelper
 from grathon.high_level.middlewares.retry import retry_middleware, auto_retry, FloodWaitError
 from grathon.core.errors.FloodWaitException import FloodWaitException
@@ -38,6 +39,7 @@ __all__ = [
     "PluginRecord",
     "SessionStore",
     "auto_handle_close_button",
+    "SmartMenu",
     "FileHelper",
     "retry_middleware",
     "auto_retry",
