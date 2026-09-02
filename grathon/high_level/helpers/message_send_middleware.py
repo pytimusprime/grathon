@@ -131,6 +131,21 @@ async def message_send_middleware(ctx: Context, next_fn) -> None:
     await next_fn(ctx)
 
 
+class MessageSendMiddleware:
+    """OOP wrapper around the message_send_middleware function.
+
+    Use when you want a class-based middleware instead of the bare function:
+
+        bot.use(MessageSendMiddleware())
+    """
+
+    def __call__(self, ctx, next_fn):
+        return message_send_middleware(ctx, next_fn)
+
+    def __repr__(self):
+        return "MessageSendMiddleware()"
+
+
 def install_message_send_middleware(client) -> None:
     """
     نصب middleware برای ردگیری ارسال پیام‌ها
