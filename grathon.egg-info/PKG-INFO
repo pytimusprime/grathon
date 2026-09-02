@@ -1,51 +1,97 @@
 Metadata-Version: 2.4
 Name: grathon
-Version: 0.1.0
-Summary: Add your description here
+Version: 2.1.0
+Summary: Grathon — Python Telegram Bot Framework (TDLib)
+Author: pytimusprime
+License: MIT
+Project-URL: Homepage, https://github.com/pytimusprime/grathon
+Project-URL: Repository, https://github.com/pytimusprime/grathon.git
+Project-URL: Issues, https://github.com/pytimusprime/grathon/issues
+Keywords: telegram,bot,tdlib,tdjson,async
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Communications :: Chat
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
-Requires-Dist: pyright>=1.1.408
-Requires-Dist: tdjson>=1.8.60
-Provides-Extra: test
-Requires-Dist: pytest>=8.0; extra == "test"
-Requires-Dist: pytest-asyncio>=0.23; extra == "test"
+Requires-Dist: tdjson>=1.8.66
+Requires-Dist: picodb @ git+https://github.com/pytimusprime/picodb.git
 
-# Grathon 🚀
-An AI-friendly, high-performance TDLib wrapper for Python.
+# Grathon — Python Telegram Bot Framework (TDLib)
 
-## Features
-- **Fully Typed**: Every TDLib object is a Python dataclass.
-- **Auto-generated**: Always up-to-date with the latest Telegram schema.
-- **Fast Routing**: Decorator-based event handling with custom filters.
-- **Multi-client**: Manage multiple Telegram accounts in a single process efficiently.
+Grathon is a Python framework for building Telegram bots on top of **TDLib** (via `tdjson`).
+It wraps the raw TDLib C++ library with a clean, async Python API and a plugin-based architecture.
+
+## Why Grathon?
+
+- **Full Telegram access** — TDLib gives access to every Telegram feature (forwarding, file download, media editing, etc.) that the Bot API cannot provide.
+- **Async-first** — Built on `asyncio` from the ground up.
+- **Plugin system** — Load, unload, reload plugins at runtime without restarting the bot.
+- **Filter DSL** — Declarative, composable filters (`&`, `|`, `~`) for event matching.
+- **Type-safe** — Uses generated TDLib type stubs (`tltypes`, `tlmethods`).
+- **Send confirmation** — Automatic tracking of pending → final message IDs via `MessageTracker`.
+- **FloodWait handling** — Built-in `FloodWaitException` for retry logic.
 
 ## Quick Start
+
 ```python
-import asyncio
-from src.tdclient import TdClient
-from src.clientmanager import ClientManager
-from src.TLSchema_Manager.tltypes import updateNewMessage
+from grathon import GrathonBot, F
 
-async def main():
-    manager = ClientManager()
-    client = TdClient(manager)
+bot = GrathonBot(
+    api_id=12345,
+    api_hash="your_api_hash",
+    bot_token="your_bot_token",
+)
 
-    @client.router.on(updateNewMessage)
-    async def handle_message(ctx):
-        print(f"New message: {ctx.update.message.content}")
+@bot.on_command("start")
+async def start(ctx):
+    await ctx.reply("Hello!")
 
-    await client.run_forever()
+@bot.on_callback(r"^confirm$")
+async def confirm(ctx):
+    await ctx.answer("Confirmed!")
 
-if __name__ == "__main__":
-    asyncio.run(main())
+await bot.start()
 ```
 
-## Internal Tools
-To re-generate the TL Schema (if `td_api.tl.txt` is updated):
+## Installation
+
 ```bash
-python src/TLSchema_Manager/app.py
+pip install tdjson>=1.8.66
+pip install grathon @ git+https://github.com/pytimusprime/grathon.git
 ```
 
 ## Documentation
-- See [ARCHITECTURE.md](./ARCHITECTURE.md) for technical details.
-- See [GEMINI.md](./GEMINI.md) for AI interaction guidelines.
+
+The `.ai-context/` directory contains the **authoritative, up-to-date documentation** for the Grathon framework. It is maintained alongside the source code and reflects the current state of the project.
+
+### Reading Order
+
+1. [`.ai-context/README.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/README.md) — Project overview, structure, and key concepts
+2. [`.ai-context/API.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/API.md) — Full API reference for all classes and methods
+3. [`.ai-context/ARCHITECTURE.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/ARCHITECTURE.md) — Architecture layers and data flow
+4. [`.ai-context/RULES.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/RULES.md) — Coding rules and conventions (must follow)
+5. [`.ai-context/FAQ.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/FAQ.md) — Common questions and troubleshooting
+6. [`.ai-context/EXAMPLES.md`](https://github.com/pytimusprime/grathon/blob/master/.ai-context/EXAMPLES.md) — Usage examples
+
+### Why `.ai-context/`?
+
+This directory contains the **authoritative, up-to-date documentation** for the Grathon framework. It is maintained alongside the source code and reflects the current state of the project. Do not rely on scattered README files or inline comments alone.
+
+## Running the Bot
+
+See the "Running the Bot" section in `.ai-context/README.md` for the full `main.py` pattern including middleware installation, plugin manager setup, scheduler, and graceful shutdown.
+
+## Database
+
+Grathon works with **PicoDB** (available separately at [github.com/pytimusprime/picodb](https://github.com/pytimusprime/picodb)) which supports both SQLite and PostgreSQL.
+
+## License
+
+MIT

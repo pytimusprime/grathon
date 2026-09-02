@@ -36,7 +36,7 @@ Repository = "https://github.com/pytimusprime/grathon.git"
 Issues = "https://github.com/pytimusprime/grathon/issues"
 
 [tool.setuptools.packages.find]
-include = ["grathon*", "core*", "high_level*"]
+include = ["grathon*"]
 exclude = ["tests*", "example*"]
 
 [tool.setuptools.package-data]
